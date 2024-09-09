@@ -146,6 +146,7 @@ namespace Stapler
 
                     selectedPart = Editor.pickPart(Editor.layerMask | 4 | 0x200000, false, false);
                     selectedPart = selectedPart == EditorLogic.RootPart ? null : selectedPart;
+                    selectedPart = Editor.ship.Contains(selectedPart) ? selectedPart : null;
 
                     return selectedPart != null;
                 },
@@ -220,6 +221,7 @@ namespace Stapler
                     foreach (var selector in partSelectors)
                         selector.Dismiss();
 
+                    selectedPart = null;
                     partSelectors.Clear();
                 }
             };
@@ -238,11 +240,13 @@ namespace Stapler
                 {
                     // Cancel the selection if the user clicks on nothing.
 
+                    if (selectedPart == null)
+                        return true;
+
                     if (Mouse.Left.GetButtonUp() && !Mouse.Left.WasDragging() && !Editor.pickPart(Editor.layerMask | 4 | 0x200000, pickRoot: false, pickRootIfFrozen: false))
                     {
                         selectedPart.gameObject.SetLayerRecursive(0, filterTranslucent: true, 2097152);
                         selectedPart.SetHighlightDefault();
-                        selectedPart = null;
 
                         return true;
                     }
