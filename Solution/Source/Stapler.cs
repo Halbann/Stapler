@@ -24,9 +24,9 @@ namespace Stapler
 
         // Editor FSM.
 
-        private EditorLogic editor => EditorLogic.fetch;
+        private EditorLogic Editor => EditorLogic.fetch;
 
-        private KerbalFSM FSM => editor.fsm;
+        private KerbalFSM FSM => Editor.fsm;
 
         private KFSMEvent on_goToModeParent;
         private KFSMEvent on_pickChild;
@@ -37,7 +37,6 @@ namespace Stapler
         private KFSMState st_parent_selectParent;
 
         private Part selectedPart;
-
         private readonly List<PartSelector> partSelectors = new List<PartSelector>();
 
         protected void Start()
@@ -109,32 +108,26 @@ namespace Stapler
 
             // 1. Event to transition to the re-parenting mode.
 
-            on_goToModeParent = new KFSMEvent("on_goToModeParent");
-            on_goToModeParent.updateMode = KFSMUpdateMode.MANUAL_TRIGGER;
-
-            on_goToModeParent.OnEvent = delegate
+            on_goToModeParent = new KFSMEvent("on_goToModeParent")
             {
-                on_goToModeParent.GoToStateOnEvent = st_parent_selectChild;
+                updateMode = KFSMUpdateMode.MANUAL_TRIGGER,
+                OnEvent = delegate
+                {
+                    on_goToModeParent.GoToStateOnEvent = st_parent_selectChild;
+                }
             };
 
-            FSM.AddEventExcluding(on_goToModeParent, st_parent_selectChild, st_parent_selectParent, editor.st_podSelect);
+            FSM.AddEventExcluding(on_goToModeParent, st_parent_selectChild, st_parent_selectParent, Editor.st_podSelect);
 
 
             // 2. State from which to SELECT the CHILD part to re-parent.
 
-            st_parent_selectChild = new KFSMState("st_parent_selectChild");
-
-            st_parent_selectChild.OnEnter = delegate
+            st_parent_selectChild = new KFSMState("st_parent_selectChild")
             {
-                ScreenMessages.PostScreenMessage("Select a part to Re-parent", editor.modeMsg);
-            };
-
-            st_parent_selectChild.OnUpdate = delegate
-            {
-            };
-
-            st_parent_selectChild.OnLeave = delegate (KFSMState to)
-            {
+                OnEnter = delegate
+                {
+                    ScreenMessages.PostScreenMessage("Select a part to Re-parent", Editor.modeMsg);
+                }
             };
 
             FSM.AddState(st_parent_selectChild);
@@ -146,38 +139,30 @@ namespace Stapler
             on_pickChild = new KFSMEvent("on_pickChild")
             {
                 updateMode = KFSMUpdateMode.UPDATE,
-
                 OnCheckCondition = delegate
                 {
-                    if (Input.GetMouseButtonUp(0) && !Mouse.Left.WasDragging(25f) && !EventSystem.current.IsPointerOverGameObject())
+                    if (!(Input.GetMouseButtonUp(0) && !Mouse.Left.WasDragging(25f) && !EventSystem.current.IsPointerOverGameObject()))
+                        return false;
+
+                    selectedPart = Editor.pickPart(Editor.layerMask | 4 | 0x200000, false, false);
+                    selectedPart = selectedPart == EditorLogic.RootPart ? null : selectedPart;
+
+                    return selectedPart != null;
+                },
+
+                OnEvent = delegate
+                {
+                    if (selectedPart != EditorLogic.RootPart)
                     {
-                        selectedPart = editor.pickPart(editor.layerMask | 4 | 0x200000, false, false);
-
-                        if (selectedPart == null || selectedPart == EditorLogic.RootPart)
-                        {
-                            selectedPart = null;
-                            return false;
-                        }
-
-                        return true;
+                        on_pickChild.GoToStateOnEvent = st_parent_selectParent;
                     }
-
-                    return false;
-                }
-            };
-
-            on_pickChild.OnEvent = delegate
-            {
-                if (selectedPart != EditorLogic.RootPart)
-                {
-                    on_pickChild.GoToStateOnEvent = st_parent_selectParent;
-                }
-                else
-                {
-                    on_pickChild.GoToStateOnEvent = st_parent_selectChild;
-                    ScreenMessages.PostScreenMessage("Cannot re-parent the root part", 5f, ScreenMessageStyle.UPPER_CENTER);
-                    //audioSource.PlayOneShot(cannotPlaceClip);
-                    selectedPart = null;
+                    else
+                    {
+                        on_pickChild.GoToStateOnEvent = st_parent_selectChild;
+                        ScreenMessages.PostScreenMessage("Cannot re-parent the root part", 5f, ScreenMessageStyle.UPPER_CENTER);
+                        //audioSource.PlayOneShot(cannotPlaceClip);
+                        selectedPart = null;
+                    }
                 }
             };
 
@@ -186,58 +171,57 @@ namespace Stapler
 
             // 4. State from which to SELECT the new PARENT part.
 
-            st_parent_selectParent = new KFSMState("st_parent_selectParent");
-
-            st_parent_selectParent.OnEnter = delegate
+            st_parent_selectParent = new KFSMState("st_parent_selectParent")
             {
-                ScreenMessages.PostScreenMessage("Select a part to be the new parent", editor.modeMsg);
-
-                // Make a list of all parts MINUS all invalid parts.
-
-                var allInvalid = new List<Part>
+                OnEnter = delegate
                 {
-                    selectedPart,
-                    selectedPart.parent
-                };
+                    ScreenMessages.PostScreenMessage("Select a part to be the new parent", Editor.modeMsg);
 
-                allInvalid.AddRange(EditorLogicBase.FindPartsInChildren(selectedPart));
+                    // Make a list of all parts MINUS all invalid parts.
 
-                foreach (var part in selectedPart.symmetryCounterparts)
+                    var allInvalid = new List<Part>();
+                    allInvalid.AddRange(EditorLogicBase.FindPartsInChildren(selectedPart));
+                    allInvalid.Add(selectedPart);
+                    allInvalid.Add(selectedPart.parent);
+
+                    foreach (var part in selectedPart.symmetryCounterparts)
+                    {
+                        allInvalid.Add(part);
+                        allInvalid.AddRange(EditorLogicBase.FindPartsInChildren(part));
+                    }
+
+                    var allValid = Editor.getSortedShipList().Except(allInvalid.Distinct()).ToList();
+
+                    // Disable all highlighting on all invalid parts.
+                    foreach (var part in allInvalid)
+                    {
+                        part.SetHighlight(active: false, recursive: false);
+                        part.SetHighlightType(Part.HighlightType.Disabled);
+                    }
+
+                    // Duplicate re-root selection behaviour for valid parts.
+                    // Part selectors are added to each valid part, they handle highlighting and selection, and provide a callback.
+                    foreach (var part in allValid)
+                        partSelectors.Add(PartSelector.Create(part, OnParentSelect, Highlighter.colorPartRootToolHighlight, Highlighter.colorPartRootToolHover, Highlighter.colorPartRootToolHighlightEdge, Highlighter.colorPartRootToolHoverEdge));
+                },
+
+                OnUpdate = Combine(
+                    EditorLogic.fetch.UndoRedoInputUpdate,
+                    EditorLogic.fetch.snapInputUpdate,
+                    EditorLogic.fetch.partSearchUpdate),
+
+                OnLeave = delegate (KFSMState to)
                 {
-                    allInvalid.Add(part);
-                    allInvalid.AddRange(EditorLogicBase.FindPartsInChildren(part));
+                    // Re-enable highlighting on all parts.
+                    foreach (Part part in EditorLogicBase.FindPartsInChildren(selectedPart.localRoot))
+                        part.SetHighlightDefault();
+
+                    // Clean up part selectors.
+                    foreach (var selector in partSelectors)
+                        selector.Dismiss();
+
+                    partSelectors.Clear();
                 }
-
-                var allValid = editor.getSortedShipList().Except(allInvalid.Distinct()).ToList();
-
-                // Duplicate re-root selection behaviour for valid parts.
-                // Part selectors are added to each valid part, they handle highlighting and selection, and provide a callback.
-
-                foreach (var part in allValid)
-                {
-                    part.SetHighlight(active: false, recursive: false);
-                    part.SetHighlightType(Part.HighlightType.Disabled);
-                }
-
-                foreach (var part in allValid)
-                    partSelectors.Add(PartSelector.Create(part, OnParentSelect, Highlighter.colorPartRootToolHighlight, Highlighter.colorPartRootToolHover, Highlighter.colorPartRootToolHighlightEdge, Highlighter.colorPartRootToolHoverEdge));
-            };
-
-            st_parent_selectParent.OnUpdate = Combine(
-                EditorLogic.fetch.UndoRedoInputUpdate,
-                EditorLogic.fetch.snapInputUpdate,
-                EditorLogic.fetch.partSearchUpdate);
-
-            st_parent_selectParent.OnLeave = delegate (KFSMState to)
-            {
-                // Clean up part selectors.
-
-                foreach (var selector in partSelectors)
-                {
-                    selector.Dismiss();
-                }
-
-                partSelectors.Clear();
             };
 
             FSM.AddState(st_parent_selectParent);
@@ -246,23 +230,25 @@ namespace Stapler
 
             // 4.5 Event to CANCEL the selection of a new parent part, which transitions back to st_parent_selectChild.
 
-            on_pickNothing = new KFSMEvent("on_pickNothing");
-            on_pickNothing.GoToStateOnEvent = st_parent_selectChild;
-            on_pickNothing.updateMode = KFSMUpdateMode.LATEUPDATE;
-            on_pickNothing.OnCheckCondition = delegate
+            on_pickNothing = new KFSMEvent("on_pickNothing")
             {
-                // Cancel the selection if the user clicks on nothing.
-
-                if (Mouse.Left.GetButtonUp() && !Mouse.Left.WasDragging() && !editor.pickPart(editor.layerMask | 4 | 0x200000, pickRoot: false, pickRootIfFrozen: false))
+                GoToStateOnEvent = st_parent_selectChild,
+                updateMode = KFSMUpdateMode.LATEUPDATE,
+                OnCheckCondition = delegate
                 {
-                    selectedPart.gameObject.SetLayerRecursive(0, filterTranslucent: true, 2097152);
-                    selectedPart.SetHighlightDefault();
-                    selectedPart = null;
+                    // Cancel the selection if the user clicks on nothing.
 
-                    return true;
+                    if (Mouse.Left.GetButtonUp() && !Mouse.Left.WasDragging() && !Editor.pickPart(Editor.layerMask | 4 | 0x200000, pickRoot: false, pickRootIfFrozen: false))
+                    {
+                        selectedPart.gameObject.SetLayerRecursive(0, filterTranslucent: true, 2097152);
+                        selectedPart.SetHighlightDefault();
+                        selectedPart = null;
+
+                        return true;
+                    }
+
+                    return false;
                 }
-
-                return false;
             };
 
             FSM.AddEvent(on_pickNothing, st_parent_selectParent);
@@ -271,13 +257,15 @@ namespace Stapler
             // 5. Event for when the PARENT is SELECTED, which transitions back to st_parent_selectChild.
             // The operation itself is in OnParentSelect.
 
-            on_pickParent = new KFSMEvent("on_pickParent");
-            on_pickParent.GoToStateOnEvent = st_parent_selectChild;
-            on_pickParent.updateMode = KFSMUpdateMode.MANUAL_TRIGGER;
-            on_pickParent.OnEvent = delegate
+            on_pickParent = new KFSMEvent("on_pickParent")
             {
-                editor.audioSource.PlayOneShot(editor.reRootClip);
-                GameEvents.onEditorPartEvent.Fire(ConstructionEventType.Unknown, selectedPart);
+                GoToStateOnEvent = st_parent_selectChild,
+                updateMode = KFSMUpdateMode.MANUAL_TRIGGER,
+                OnEvent = delegate
+                {
+                    Editor.audioSource.PlayOneShot(Editor.reRootClip);
+                    GameEvents.onEditorPartEvent.Fire(ConstructionEventType.Unknown, selectedPart);
+                }
             };
 
             FSM.AddEvent(on_pickParent, st_parent_selectParent);
@@ -290,7 +278,7 @@ namespace Stapler
 
         private void OnParentSelect(Part newParent)
         {
-            if (newParent == null || !editor.ship.Contains(newParent) || newParent == selectedPart || selectedPart.parent == null)
+            if (newParent == null || !Editor.ship.Contains(newParent) || newParent == selectedPart || selectedPart.parent == null)
             {
                 Debug.LogError("Stapler: Invalid parent part selected.");
                 return;
@@ -299,8 +287,8 @@ namespace Stapler
             // Re-parent the selected part and its symmetry counterparts.
 
             var parts = new List<Part>();
-            parts.Add(selectedPart);
             parts.AddRange(selectedPart.symmetryCounterparts);
+            parts.Add(selectedPart);
 
             foreach (var part in parts)
             {
@@ -323,10 +311,9 @@ namespace Stapler
                 part.onAttach(localParent);
             }
 
-            // Play a sound and run the event that changes the state back to the start.
+            // Run the event that changes the state back to the start.
 
-            editor.audioSource.PlayOneShot(editor.partGrabClip);
-            editor.pickPart(LayerUtil.DefaultEquivalent | 4 | 0x200000, pickRoot: true, pickRootIfFrozen: true);
+            Editor.pickPart(LayerUtil.DefaultEquivalent | 4 | 0x200000, pickRoot: true, pickRootIfFrozen: true);
             FSM.RunEvent(on_pickParent);
         }
 
@@ -353,12 +340,10 @@ namespace Stapler
             // Event is called by the game whenever the construction mode changes.
             // We need to run our own event to transition to the new mode.
 
-            // todo: Check state before deciding to transition or not.
-
             if (mode != reparentMode || FSM.CurrentState == st_parent_selectChild)
                 return;
 
-            editor.constructionMode = reparentMode;
+            Editor.constructionMode = reparentMode;
             EditorLogic.fetch.fsm.RunEvent(on_goToModeParent);
         }
     }
