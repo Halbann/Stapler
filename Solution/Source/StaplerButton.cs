@@ -44,13 +44,20 @@ namespace Stapler
             toggle = reparentButton.GetComponent<Toggle>();
             var oldSprite = toggle.image.sprite;
 
-            // Replace off sprite.
-            Texture2D offIconTexture = GameDatabase.Instance.GetTexture("Stapler/Icons/reparent_off", false);
-            reparentButton.GetChild("Background").GetComponent<Image>().sprite = Sprite.Create(offIconTexture, oldSprite.rect, oldSprite.pivot);
+            try
+            {
+                // Replace off sprite.
+                Texture2D offIconTexture = GameDatabase.Instance.GetTexture("Stapler/Icons/reparent_off", false);
+                reparentButton.GetChild("Background").GetComponent<Image>().sprite = Sprite.Create(offIconTexture, oldSprite.rect, oldSprite.pivot);
 
-            // Replace on sprite.
-            Texture2D onIconTexture = GameDatabase.Instance.GetTexture("Stapler/Icons/reparent_on", false);
-            reparentButton.GetChild("Checkmark").GetComponent<Image>().sprite = Sprite.Create(onIconTexture, oldSprite.rect, oldSprite.pivot);
+                // Replace on sprite.
+                Texture2D onIconTexture = GameDatabase.Instance.GetTexture("Stapler/Icons/reparent_on", false);
+                reparentButton.GetChild("Checkmark").GetComponent<Image>().sprite = Sprite.Create(onIconTexture, oldSprite.rect, oldSprite.pivot);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError("[Stapler] Failed to load icons: " + e.Message);
+            }
 
             // Add a listener for button selection.
             toggle.onValueChanged.AddListener(OnReparentButtonInput);

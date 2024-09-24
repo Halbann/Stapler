@@ -30,10 +30,5 @@ using System.Security;
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
 
-namespace Stapler
-{
-	static partial class VersionInfo
-	{
-		public const string ASSEMBLY = "Stapler";
-	}
-}
+[assembly: AssemblyProduct("Stapler")]
+[assembly: AssemblyTitle("Stapler")]
