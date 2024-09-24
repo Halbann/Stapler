@@ -312,6 +312,11 @@ namespace Stapler
                 part.setParent(localParent);
                 part.transform.SetParent(localParent.transform, true);
                 part.attachMode = AttachModes.SRF_ATTACH;
+
+                part.attPos0 = part.transform.localPosition;
+                part.attRotation0 = part.transform.localRotation;
+                part.srfAttachNode.attachedPart = localParent;
+
                 part.onAttach(localParent);
             }
 
