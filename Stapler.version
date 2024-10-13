@@ -1,11 +1,11 @@
 {
   "NAME": "Stapler",
-  "URL": "https://raw.githubusercontent.com/Halbann/Stapler/master/GameData/Stapler/Stapler.version",
+  "URL": "https://raw.githubusercontent.com/Halbann/Stapler/main/GameData/Stapler/Stapler.version",
   "DOWNLOAD": "https://github.com/Halbann/Stapler/releases",
   "VERSION": {
     "MAJOR": 1,
     "MINOR": 0,
-    "PATCH": 1,
+    "PATCH": 2,
     "BUILD": 0
   },
   "KSP_VERSION": {
