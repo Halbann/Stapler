@@ -1,17 +1,8 @@
-# Build Instructions
+# Building Stapler
 
-1. Open the solution.
-2. Right click the solution in the Solution Explorer and click Restore NuGet Packages.
+1. Install the .NET SDK.
+2. Set a `KSP_ROOT` environment variable to your KSP folder (the one with `KSP_x64.exe`).
+3. Build: open `Stapler.slnx`, or run `dotnet build Stapler.slnx`.
+4. Release zip: run `.\release.ps1`.
 
------------------
-
-3. Double click Properties, go to Reference Paths, remove any existing reference paths and add your game folder.
-
-OR
-
-3. Edit Stapler.csproj.user to point to your game folder.
-
-------------------
-
-4. Attempt a build and everything should sort itself out. Don't delete the missing reference to Assembly-CSharp, it's not actually missing. Deploy.bat should have automatically copied a debug version of Stapler into your GameData.
-
+Other ways to set the game path: https://kspbuildtools.readthedocs.io/en/stable/msbuild/ksp-install.html

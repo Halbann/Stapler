@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<OutputType>Library</OutputType>
+		<RootNamespace>Stapler</RootNamespace>
+		<AssemblyName>Stapler</AssemblyName>
+		<TargetFramework>net48</TargetFramework>
+		<Version>1.1.1.0</Version>
+		<LangVersion>latest</LangVersion>
+		<Copyright>Copyright © Halban 2026, CC BY SA</Copyright>
+	</PropertyGroup>
+	<!-- General -->
+	<PropertyGroup>
+		<RepoRoot>$(SolutionDir)</RepoRoot>
+	</PropertyGroup>
+	<!-- KSPBT -->
+	<PropertyGroup>
+		<KSPBT_ModPluginFolder>Plugins</KSPBT_ModPluginFolder>
+		<KSPBT_GenerateDependencyAttributes>false</KSPBT_GenerateDependencyAttributes>
+	</PropertyGroup>
+	<!-- Publicizer -->
+	<ItemGroup>
+		<Publicize Include="Assembly-CSharp" />
+		<DoNotPublicize Include="Assembly-CSharp:BaseField`1.OnValueModified" />
+	</ItemGroup>
+	<!-- Version Files -->
+	<ItemGroup>
+		<KSPVersionFile Include="$(RepoRoot)Stapler.version">
+			<Destination>$(KSPBT_ModRoot)/Stapler.version</Destination>
+		</KSPVersionFile>
+	</ItemGroup>
+	<!-- Packages -->
+	<ItemGroup>
+		<PackageReference Include="KSPBuildTools" Version="1.1.1" />
+		<PackageReference Include="Krafs.Publicizer" Version="2.3.0">
+		  <PrivateAssets>all</PrivateAssets>
+		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
+	<!-- Copy text files -->
+	<Target Name="CopyTextFiles" AfterTargets="Build" BeforeTargets="CopyToGame">
+		<Copy SourceFiles="$(RepoRoot)readme.md" DestinationFiles="$(KSPBT_ModRoot)Readme.txt" Condition="Exists('$(RepoRoot)readme.md')" />
+		<Copy SourceFiles="$(RepoRoot)license.md" DestinationFiles="$(KSPBT_ModRoot)License.txt" Condition="Exists('$(RepoRoot)license.md')" />
+	</Target>
+	<!-- Copy mod folder to game -->
+	<Target Name="CopyToGame" AfterTargets="Build">
+		<ItemGroup>
+			<ModFiles Include="$(KSPBT_ModRoot)\**\*" />
+		</ItemGroup>
+		<Copy SourceFiles="@(ModFiles)" DestinationFiles="@(ModFiles->'$(KSPBT_GameRoot)/GameData/$(MSBuildProjectName)/%(RecursiveDir)%(Filename)%(Extension)')" />
+	</Target>
+</Project>
