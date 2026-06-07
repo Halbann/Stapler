@@ -294,6 +294,8 @@ namespace Stapler
             parts.AddRange(selectedPart.symmetryCounterparts);
             parts.Add(selectedPart);
 
+            string srfAttachMeshName = Mouse.MouseButton.hoveredPartHitInfo.collider?.name ?? "";
+
             foreach (var part in parts)
             {
                 part.parent.removeChild(part);
@@ -316,6 +318,7 @@ namespace Stapler
                 part.attPos0 = part.transform.localPosition;
                 part.attRotation0 = part.transform.localRotation;
                 part.srfAttachNode.attachedPart = localParent;
+                part.srfAttachNode.srfAttachMeshName = srfAttachMeshName;
 
                 part.onAttach(localParent);
             }
